@@ -1,11 +1,27 @@
+# Core
 numpy
 pandas
 matplotlib
 scikit-learn
+jupyterlab
+notebook
+
+# Deep Learning
+torch
+torchvision
+torchaudio
+
+# Transformers
 transformers
 sentence-transformers
+
+# Vector Database
 faiss-cpu
-torch
-jupyter
+
+# Experiment Tracking
 wandb
+
+# Utilities
 tqdm
+ipywidgets
+python-dotenv
