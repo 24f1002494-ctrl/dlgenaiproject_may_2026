@@ -113,3 +113,20 @@ class FaissIndexService:
             )
 
         return self.index.ntotal
+    
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int,
+    ):
+        """
+        Search the FAISS index.
+        """
+
+        if self.index is None:
+            raise ValueError("FAISS index has not been loaded.")
+
+        return self.index.search(
+            query_embedding,
+            top_k,
+        )
