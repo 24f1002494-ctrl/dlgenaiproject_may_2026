@@ -14,8 +14,10 @@ Deep Learning & Generative AI Project
 
 from typing import List
 import pandas as pd
-
+from src.logger import get_logger
 from pandas import *
+
+logger = get_logger(__name__)
 
 def build_knowledge_base(train_df: pd.DataFrame) -> List[str]:
     """
@@ -34,6 +36,8 @@ def build_knowledge_base(train_df: pd.DataFrame) -> List[str]:
         for every question.
     """
 
+    logger.info("Building Knowledge Base...")
+
     knowledge_base = []
 
     for _, row in train_df.iterrows():
@@ -44,4 +48,6 @@ def build_knowledge_base(train_df: pd.DataFrame) -> List[str]:
 
         knowledge_base.append(correct_document)
 
+        logger.info("Knowledge Base created successfully.")
+    
     return knowledge_base

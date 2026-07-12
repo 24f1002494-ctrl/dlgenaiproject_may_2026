@@ -1,2 +1,27 @@
-project_name = "dlgenaiproject_may_2026"
-embedding_model = "all-MiniLM-L6-v2"
+project:
+  name: dlgenaiproject_may_2026
+  author: Nishant S Kuttan
+
+dataset:
+  train: data/raw/train.csv
+  test: data/raw/test.csv
+
+knowledge_base:
+  version: v1
+
+models:
+  embedding: all-MiniLM-L6-v2
+  reranker: cross-encoder/ms-marco-MiniLM-L-6-v2
+  zero_shot: facebook/bart-large-mnli
+
+retrieval:
+  top_k: 10
+
+faiss:
+  index: IndexFlatL2
+
+logging:
+  level: INFO
+
+wandb:
+  enabled: true
