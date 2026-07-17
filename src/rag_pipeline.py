@@ -83,6 +83,7 @@ class RAGPipeline:
         self,
         ranked_results: List[dict],
         question_row,
+        top_k: int = 3,
     ) -> List[str]:
         """
         Match reranked documents back to
@@ -90,6 +91,7 @@ class RAGPipeline:
         """
 
         predictions = []
+        seen = set()
 
         option_labels = [
             "A",
@@ -107,9 +109,22 @@ class RAGPipeline:
 
                 if document == str(question_row[label]):
 
-                    predictions.append(label)
+                    if label not in seen:
+                        predictions.append(label)
+                        seen.add(label)
+
+                    if len(predictions) == top_k:
+                        return predictions
 
                     break
+
+        # Fallback: fill remaining choices
+        for label in option_labels:
+            if label not in seen:
+                predictions.append(label)
+
+            if len(predictions) == top_k:
+                break
 
         return predictions
     
@@ -135,6 +150,7 @@ class RAGPipeline:
         predictions = self._match_documents_to_options(
             ranked_results,
             question_row,
+            top_k=top_k,
         )
 
         logger.info(
