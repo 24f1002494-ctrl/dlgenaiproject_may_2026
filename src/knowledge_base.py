@@ -1,53 +1,85 @@
 """
 knowledge_base.py
 
-Description:
-Builds and validates the Knowledge Base used by
-the Retrieval-Augmented Generation pipeline.
+Provides services for building, saving and loading
+the Knowledge Base used by the RAG pipeline.
 
 Author:
-Nishant S Kuttan
+    Nishant S Kuttan
 
 Project:
-Deep Learning & Generative AI Project
+    Deep Learning & Generative AI Project
 """
 
-from typing import List
 import pandas as pd
+
 from src.logger import get_logger
-from pandas import *
 
 logger = get_logger(__name__)
 
-def build_knowledge_base(train_df: pd.DataFrame) -> List[str]:
+
+class KnowledgeBaseService:
     """
-    Build the Knowledge Base using the correct answers
-    from the training dataset.
-
-    Parameters
-    ----------
-    train_df : pd.DataFrame
-        Training dataset.
-
-    Returns
-    -------
-    List[str]
-        List containing the correct answer text
-        for every question.
+    Service responsible for creating and managing
+    the Knowledge Base.
     """
 
-    logger.info("Building Knowledge Base...")
+    def __init__(self):
+        self.knowledge_base = None
 
-    knowledge_base = []
+    def build(self, dataframe: pd.DataFrame) -> list[str]:
+        """
+        Build the knowledge base from the training dataset.
 
-    for _, row in train_df.iterrows():
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Training dataframe.
 
-        correct_option = row["answer"]
+        Returns
+        -------
+        list[str]
+            Knowledge base documents.
+        """
 
-        correct_document = str(row[correct_option])
+        logger.info("Building Knowledge Base...")
 
-        knowledge_base.append(correct_document)
+        knowledge_base = []
 
-        logger.info("Knowledge Base created successfully.")
-    
-    return knowledge_base
+        for _, row in dataframe.iterrows():
+            correct_letter = row["answer"]
+            knowledge_base.append(str(row[correct_letter]))
+
+        self.knowledge_base = knowledge_base
+
+        logger.info(
+            "Knowledge Base built successfully with %d documents.",
+            len(self.knowledge_base),
+        )
+
+        return self.knowledge_base
+
+
+    def get_documents(self) -> list[str]:
+        """
+        Return the loaded Knowledge Base.
+        """
+
+        if self.knowledge_base is None:
+            raise ValueError(
+                "Knowledge Base is not available."
+            )
+
+        return self.knowledge_base
+
+    def size(self) -> int:
+        """
+        Return the number of documents in the Knowledge Base.
+        """
+
+        if self.knowledge_base is None:
+            raise ValueError(
+                "Knowledge Base is not available."
+            )
+
+        return len(self.knowledge_base)
