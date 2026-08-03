@@ -1,5 +1,6 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from huggingface_hub import hf_hub_download
 
 from config import *
 
@@ -10,6 +11,11 @@ tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
 model = AutoModelForSequenceClassification.from_pretrained(
     MODEL_NAME,
     num_labels=1
+)
+
+MODEL_PATH = hf_hub_download(
+    repo_id="24f1002494/delgenai-bertmodel",
+    filename="best_bert_model.pt"
 )
 
 # Load fine-tuned weights
