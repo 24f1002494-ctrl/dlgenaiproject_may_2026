@@ -2,11 +2,11 @@ import streamlit as st
 from inference import predict
 
 st.set_page_config(
-    page_title="LLM Science Exam Solver",
+    page_title="Smart MCQ Solver - 24f1002494",
     page_icon="🧠"
 )
 
-st.title("🧠 LLM Science Exam Solver")
+st.title("🧠 Smart MCQ Solver - 24f1002494")
 
 st.write(
     "This application uses a fine-tuned BERT model to rank the five answer choices for a multiple-choice question."
