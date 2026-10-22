@@ -37,7 +37,7 @@ function fail(res, status, message) { return send(res, status, {error:message});
 function evalKey(id) { return "mailroom/evaluations/" + sha(id) + ".json"; }
 function stableKey(d) { return "mailroom/stable/" + sha({dossierId:d.dossierId, fingerprint:sha(d)}) + ".json"; }
 async function loadJson(pathname) {
-  const result = await get(pathname, {access:"private"});
+  const result = await get(pathname, {access:"private", useCache:false});
   if (!result || result.statusCode !== 200 || !result.stream) return null;
   const body = await new Response(result.stream).text();
   return JSON.parse(body);
