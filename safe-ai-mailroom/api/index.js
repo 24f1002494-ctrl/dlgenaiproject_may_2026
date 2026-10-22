@@ -47,6 +47,19 @@ async function saveJson(pathname, value) {
     access:"private", addRandomSuffix:false, allowOverwrite:true, contentType:"application/json"
   });
 }
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({length: Math.min(limit, items.length)}, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
 function allLines(d) { return d.sources.flatMap(source => source.lines.map(line => ({...line, source}))); }
 function trustedSource(source) {
   const m = [source.kind, source.provenance, source.title].join(" ").toLowerCase();
@@ -368,20 +381,18 @@ module.exports = async function handler(req,res) {
         return send(res,200,existing.response);
       }
 
-      const proposals=[];
-      for (const d of b.dossiers) {
-        const skey=stableKey(d);
-        let p = d.partition==="stable_core" ? await loadJson(skey) : null;
+      const proposals = await mapLimit(b.dossiers, 12, async (d) => {
+        const skey = stableKey(d);
+        let p = d.partition === "stable_core" ? await loadJson(skey) : null;
         if (!p) {
-          p=decide(d);
-          if (!p || !validateProposal(p,d,b.allowedActions)) return fail(res,422,"proposal validation failed");
-          if (d.partition==="stable_core") await saveJson(skey,p);
+          p = decide(d);
+          if (!p || !validateProposal(p, d, b.allowedActions)) throw new Error("proposal validation failed");
+          if (d.partition === "stable_core") await saveJson(skey, p);
         } else {
-          // Revalidate cached proposals against this exact dossier before using them.
-          if (!validateProposal(p,d,b.allowedActions)) return fail(res,409,"cached proposal mismatch");
+          if (!validateProposal(p, d, b.allowedActions)) throw new Error("cached proposal mismatch");
         }
-        proposals.push(p);
-      }
+        return p;
+      });
       if (new Set(proposals.map(p=>p.callId)).size!==proposals.length) return fail(res,422,"duplicate callId");
       const response={profile:PROFILE,evaluationId:b.evaluationId,status:"awaiting_receipts",inputDigest,proposals};
       const record={evaluationId:b.evaluationId,requestDigest,inputDigest,verifier:b.receiptVerifier.publicKeyJwk,dossiers:b.dossiers,proposals,response,state:"awaiting_receipts"};
