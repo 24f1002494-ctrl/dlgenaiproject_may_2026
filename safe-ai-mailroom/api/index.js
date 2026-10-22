@@ -161,7 +161,7 @@ function decide(d) {
   // A trusted report that quotes an attack is not itself an attack. Quarantine only a
   // directive embedded in an untrusted item which attempts to control agent/tool behavior.
   for (const line of lines) {
-    if (injectionLine(line.text, line.source)) {
+    if (injectionLine(line, line.source)) {
       const named = extractNamedValue([line], "artifact\\s*id");
       const artifactId = named ? named.value : (line.source.sourceId || "");
       if (str(artifactId)) {
