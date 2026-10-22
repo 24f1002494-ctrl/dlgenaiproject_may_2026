@@ -114,7 +114,7 @@ function extractStatus(lines) {
   return null;
 }
 function extractNamedValue(lines, label) {
-  const re = new RegExp("\\\\b" + label + "\\\\s*[:=]\\\\s*([^;,.\\\\n]+)", "i");
+  const re = new RegExp("\\b(?:" + label + ")\\s*[:=]\\s*([^;,\\.\\n]+)", "i");
   for (const line of lines) {
     const m = line.text.match(re);
     if (m) return {value:m[1].trim(),lineId:line.lineId};
@@ -122,7 +122,7 @@ function extractNamedValue(lines, label) {
   return null;
 }
 function getApprovalQueue(lines) {
-  const e = extractNamedValue(lines, "(?:owning\\\\s+team|approval\\\\s+queue|owner\\\\s+team|team)");
+  const e = extractNamedValue(lines, "(?:owning\\s+team|approval\\s+queue|owner\\s+team|team)");
   if (e && e.value && e.value.length < 100) return e;
   return {value:"mailroom-ops",lineId:null};
 }
@@ -162,7 +162,7 @@ function decide(d) {
   // directive embedded in an untrusted item which attempts to control agent/tool behavior.
   for (const line of lines) {
     if (injectionLine(line.text, line.source)) {
-      const named = extractNamedValue([line], "artifact\\\\s*id");
+      const named = extractNamedValue([line], "artifact\\s*id");
       const artifactId = named ? named.value : (line.source.sourceId || "");
       if (str(artifactId)) {
         return proposal(d,"quarantine_item",{kind:"security_queue",id:"mailroom"},
@@ -179,9 +179,9 @@ function decide(d) {
   // Internal changes need a trusted, current authorization for the exact field, plus
   // a case ID, source event ID and the exact new value.
   if (/delivery.?window/.test(objective) || /update.*delivery window/i.test(d.objective)) {
-    const caseId = extractNamedValue(lines,"case\\\\s*(?:id|#)");
-    const eventId = extractNamedValue(lines,"source\\\\s*event\\\\s*id|event\\\\s*id");
-    const window = extractNamedValue(lines,"delivery\\\\s*window");
+    const caseId = extractNamedValue(lines,"case\\s*(?:id|#)");
+    const eventId = extractNamedValue(lines,"(?:source\\s*event\\s*id|event\\s*id)");
+    const window = extractNamedValue(lines,"delivery\\s*window");
     const auth = lines.find(x => trustedSource(x.source)
       && /(approve|authorized|authorised|signed off)/i.test(x.text)
       && /delivery.?window/i.test(x.text)
