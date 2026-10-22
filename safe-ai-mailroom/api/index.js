@@ -541,7 +541,7 @@ module.exports = async function handler(req,res) {
             payload:ai.payload,
             evidence:ai.evidence
           };
-          if (!validateProposal(p,d,b.allowedActions)) {
+          if (!validateProposal(p,d,b.allowedActions) || !validateDecisionSafety(p,d)) {
             // A model suggestion must pass deterministic schema validation. Do not run an
             // invalid tool action; route uncertain or malformed suggestions for confirmation.
             const lines = allLines(d);
@@ -553,7 +553,7 @@ module.exports = async function handler(req,res) {
             p = proposal(d,"request_confirmation",{kind:"approval_queue",id:queue.value},
               {claimedSender:sender.value,questionCode:"VERIFY_REQUEST",referenceId:ref ? ref.value : d.dossierId},
               evidence.length ? evidence : [first.lineId]);
-            if (!validateProposal(p,d,b.allowedActions)) throw new Error("safe fallback failed validation");
+            if (!validateProposal(p,d,b.allowedActions) || !validateDecisionSafety(p,d)) throw new Error("safe fallback failed validation");
           }
           if (d.partition === "stable_core") pendingStable.push({d,p});
         }
