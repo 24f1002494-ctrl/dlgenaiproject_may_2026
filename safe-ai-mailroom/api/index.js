@@ -434,7 +434,7 @@ module.exports = async function handler(req,res) {
     await saveJson(ekey,ev);
     return send(res,200,response);
   } catch (err) {
-    // Do not echo exception text, request data, or private store details to the caller.
+    console.error("mailroom internal failure", err && err.name, err && err.message);
     return fail(res,503,"temporary storage or processing failure");
   }
 };
