@@ -1,0 +1,12 @@
+{
+  "name": "safe-ai-mailroom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Safety-gated mailroom proposal and signed receipt endpoint",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.0"
+  }
+}
