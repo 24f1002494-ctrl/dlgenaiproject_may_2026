@@ -135,7 +135,7 @@ function extractNamedValue(lines, label) {
   return null;
 }
 function getApprovalQueue(lines) {
-  const e = extractNamedValue(lines, "(?:owning\\s+team|approval\\s+queue|owner\\s+team|team)");
+  const e = extractNamedValue(lines.filter(x => trustedSource(x.source)), "(?:owning\\s+team|approval\\s+queue|owner\\s+team|team)");
   if (e && e.value && e.value.length < 100) return e;
   return {value:"mailroom-ops",lineId:null};
 }
@@ -353,6 +353,95 @@ function validateProposal(p,d,allowed) {
   }
   return false;
 }
+function validateDecisionSafety(p,d) {
+  const lines = allLines(d);
+  const citedIds = new Set(p.evidence);
+  const cited = lines.filter(x => citedIds.has(x.lineId));
+  const citedTrusted = cited.filter(x => trustedSource(x.source));
+  const citedText = cited.map(x => x.text).join("\n");
+  const trustedText = citedTrusted.map(x => x.text).join("\n");
+  const allText = lines.map(x => x.text).join("\n");
+  const has = (text,value) => str(value) && String(text).toLowerCase().includes(String(value).toLowerCase());
+
+  if (p.action === "request_confirmation") {
+    if (p.target.id !== "mailroom-ops") {
+      const q = lines.find(x => trustedSource(x.source)
+        && /(?:owning\s+team|approval\s+queue|owner\s+team|team)\s*[:=]/i.test(x.text)
+        && has(x.text,p.target.id));
+      if (!q || !citedIds.has(q.lineId)) return false;
+    }
+    if (p.payload.claimedSender !== "unknown"
+      && !cited.some(x => has(x.text,p.payload.claimedSender) && /(?:from|sender|reply-to|email|customer)/i.test(x.text))) return false;
+    if (p.payload.referenceId !== d.dossierId
+      && !cited.some(x => has(x.text,p.payload.referenceId))) return false;
+    return true;
+  }
+
+  if (p.action === "create_draft") {
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(p.payload.recipient)) return false;
+    const recipientLine = cited.find(x => extractEmails(x.text).some(e => e.toLowerCase() === p.payload.recipient.toLowerCase())
+      && (/^\s*(?:from|reply-to|customer email|verified customer email|approved recipient)\s*:/i.test(x.text)
+        || (trustedSource(x.source) && /(?:customer email|verified recipient|reply-to)/i.test([x.source.kind,x.source.provenance,x.source.title].join(" ")))));
+    if (!recipientLine) return false;
+    if (!cited.some(x => has(x.text,p.payload.referenceId))) return false;
+    if (!cited.some(x => has(x.text,p.payload.status) && /(?:status|delivery|shipment|order|fulfillment)/i.test(x.text)
+      && trustedSource(x.source))) return false;
+    if (/(identity conflict|sender mismatch|recipient mismatch|spoofed|email mismatch|unverified sender|wrong customer)/i.test(allText)) return false;
+    return true;
+  }
+
+  if (p.action === "update_internal_record") {
+    if (!citedTrusted.length || !has(trustedText,p.target.id) || !has(trustedText,p.payload.sourceEventId) || !has(trustedText,p.payload.value)) return false;
+    if (!/delivery\s*window/i.test(trustedText)
+      || !/(approved|authori[sz]ed|signed off)/i.test(trustedText)
+      || /(expired|revoked|superseded|rescinded|stale approval|wrong case|different case)/i.test(trustedText)) return false;
+    return true;
+  }
+
+  if (p.action === "send_approved_notice") {
+    if (!citedTrusted.length) return false;
+    if (!/approved|authori[sz]ed|signed off/i.test(trustedText)
+      || /not approved|unauthorized|unauthorised|expired|revoked|superseded|rescinded|stale approval|different recipient|wrong recipient|different template/i.test(trustedText)) return false;
+    if (!has(trustedText,p.target.id) || !has(trustedText,p.payload.referenceId)
+      || !has(trustedText,p.payload.status) || !has(trustedText,"approved_delivery_notice")) return false;
+    const currentStatusLines = lines.filter(x => trustedSource(x.source)
+      && /(?:current|latest|live|order status|delivery status|fulfillment status)/i.test([x.source.kind,x.source.provenance,x.source.title,x.text].join(" "))
+      && /(?:status\s*[:=]|currently|current status|latest status)/i.test(x.text)
+      && !/(historical|previous|old status|superseded|as of.*(?:yesterday|last week|previous|prior)|not current)/i.test(x.text));
+    for (const x of currentStatusLines) {
+      const current = extractStatus([x]);
+      if (current && current.value.replace(/_/g," ").toLowerCase() !== p.payload.status.replace(/_/g," ").toLowerCase()) return false;
+      if (!citedIds.has(x.lineId)) return false;
+    }
+    return true;
+  }
+
+  if (p.action === "quarantine_item") {
+    const attack = cited.find(x => injectionLine(x,x.source));
+    if (!attack) return false;
+    const artifactLine = lines.find(x => x.source.sourceId === attack.source.sourceId
+      && /artifact\s*id\s*[:=]/i.test(x.text));
+    const idMatch = artifactLine && artifactLine.text.match(/artifact\s*id\s*[:=]\s*([^;,\.\n]+)/i);
+    const expectedArtifact = idMatch ? idMatch[1].trim() : attack.source.sourceId;
+    if (p.payload.artifactId !== expectedArtifact) return false;
+    if (artifactLine && !citedIds.has(artifactLine.lineId)) return false;
+    return true;
+  }
+
+  if (p.action === "no_action") {
+    if (p.payload.reasonCode === "DUPLICATE") {
+      return cited.some(x => trustedSource(x.source) && /duplicate/i.test(x.text));
+    }
+    if (p.payload.reasonCode === "ALREADY_COMPLETED") {
+      return cited.some(x => trustedSource(x.source) && /(already completed|already sent|delivery confirmed and closed|resolved;? no further action|status\s*[:=]\s*completed)/i.test(x.text));
+    }
+    if (p.payload.reasonCode === "INFORMATIONAL") {
+      return /(?:no action needed|for information only|fyi only|informational update)/i.test(d.objective)
+        && cited.some(x => trustedSource(x.source) && /(?:no action needed|for information only|fyi only|informational update)/i.test(x.text));
+    }
+  }
+  return false;
+}
 function normalizeProposal(p) {
   return {dossierId:p.dossierId,callId:p.callId,action:p.action,target:p.target===undefined?null:p.target,payload:p.payload,evidence:[...p.evidence].sort()};
 }
@@ -441,7 +530,7 @@ module.exports = async function handler(req,res) {
         const d = b.dossiers[i];
         let p = cached[i];
         if (p) {
-          if (!validateProposal(p,d,b.allowedActions)) throw new Error("cached proposal mismatch");
+          if (!validateProposal(p,d,b.allowedActions) || !validateDecisionSafety(p,d)) throw new Error("cached proposal mismatch");
         } else {
           const ai = modelById.get(d.dossierId);
           p = {
@@ -460,7 +549,7 @@ module.exports = async function handler(req,res) {
             const sender = getSender(lines);
             const ref = extractReference(lines);
             const queue = getApprovalQueue(lines);
-            const evidence = [...new Set([sender.lineId,ref && ref.lineId,first && first.lineId].filter(Boolean))];
+            const evidence = [...new Set([sender.lineId,ref && ref.lineId,queue.lineId,first && first.lineId].filter(Boolean))];
             p = proposal(d,"request_confirmation",{kind:"approval_queue",id:queue.value},
               {claimedSender:sender.value,questionCode:"VERIFY_REQUEST",referenceId:ref ? ref.value : d.dossierId},
               evidence.length ? evidence : [first.lineId]);
