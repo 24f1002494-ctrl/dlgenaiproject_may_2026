@@ -10,8 +10,8 @@ const hash=v=>crypto.createHash('sha256').update(typeof v==='string'?v:canon(v))
 const id=()=>crypto.randomBytes(12).toString('hex');
 const text=x=>typeof x==='string'&&x.trim().length>0;
 const obj=x=>x&&typeof x==='object'&&!Array.isArray(x);
-function send(res,status,data){res.status(status).setHeader('Content-Type','application/a2a+json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(data));}
-function fail(res,status,error){return send(res,status,{error});}
+function send(res,status,data){res.statusCode=status;res.setHeader('Content-Type','application/a2a+json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(data));}
+function fail(res,status,error){if(res.writableEnded)return;return send(res,status,{error});}
 function headers(req,res){if(req.headers['a2a-version']!=='1.0')return fail(res,400,'INVALID_VERSION');if(req.method!=='GET'&&String(req.headers['content-type']||'').split(';')[0]!=='application/a2a+json')return fail(res,415,'INVALID_MEDIA_TYPE');if(req.method==='GET'&&req.headers['content-type']&&String(req.headers['content-type']).split(';')[0]!=='application/a2a+json')return fail(res,415,'INVALID_MEDIA_TYPE');return true;}
 function principal(req){const m=String(req.headers.authorization||'').match(/^Bearer ([A-Za-z0-9._~+/=-]+)$/);return m?hash(m[1]):null;}
 async function body(req){if(req.body!==undefined&&req.body!==null){if(typeof req.body==='string'){try{return JSON.parse(req.body)}catch{throw Object.assign(new Error('INVALID_JSON'),{status:400})}}return req.body;}let b='';for await(const c of req){b+=c;if(b.length>3*1024*1024)throw Object.assign(new Error('TOO_LARGE'),{status:413});}try{return JSON.parse(b)}catch{throw Object.assign(new Error('INVALID_JSON'),{status:400})}}
