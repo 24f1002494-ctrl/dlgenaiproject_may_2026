@@ -1,8 +1,8 @@
 {
   "name": "ga5-invoice-action-agent",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "engines": {"node": ">=20"},
+  "engines": {"node": ">=22"},
   "dependencies": {
     "@vercel/blob": "^2.6.1",
     "ai": "^7.0.0"
