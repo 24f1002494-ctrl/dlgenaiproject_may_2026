@@ -1,11 +1,1 @@
-{
-  "version": 2,
-  "functions": {
-    "api/agent.js": {"maxDuration":45},
-    "api/card.js": {"maxDuration":10}
-  },
-  "rewrites": [
-    {"source":"/.well-known/agent-card.json","destination":"/api/card"},
-    {"source":"/a2a/:path*","destination":"/api/agent"}
-  ]
-}
+{"version":2,"functions":{"api/agent-final.js":{"maxDuration":45},"api/card.js":{"maxDuration":10}},"rewrites":[{"source":"/.well-known/agent-card.json","destination":"/api/card"},{"source":"/a2a/:path*","destination":"/api/agent-final"}]}
