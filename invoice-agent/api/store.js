@@ -37,6 +37,26 @@ async function claim(path, value) {
     });
     return true;
   } catch (e) {
+    // A crashed serverless invocation can leave the lock behind.  Locks are
+    // advisory; the durable idempotency/task record remains authoritative.
+    try {
+      const r = await get(p, { access: 'private', useCache: false });
+      if (r && r.statusCode === 200 && r.stream) {
+        const held = JSON.parse(await new Response(r.stream).text());
+        const at = Number(held && held.at) || 0;
+        if (!at || Date.now() - at > 10000) {
+          await del(p, { access: 'private' });
+          await put(p, JSON.stringify(value), {
+            access: 'private',
+            addRandomSuffix: false,
+            allowOverwrite: false,
+            contentType: 'application/json',
+            cacheControlMaxAge: 60,
+          });
+          return true;
+        }
+      }
+    } catch (_) {}
     return false;
   }
 }
