@@ -1,0 +1,1 @@
+module.exports=async function(req,res){res.statusCode=200;res.setHeader('Content-Type','application/a2a+json');res.end(JSON.stringify({ok:true}))};
