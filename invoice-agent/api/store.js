@@ -1,6 +1,6 @@
 const { put, get, list, del } = require('@vercel/blob');
 const mem = globalThis.__invoiceA2AStoreCache || (globalThis.__invoiceA2AStoreCache = new Map());
-function key(path) { return `a2a/v3/${path}`; }
+function key(path) { return `a2a/v4/${path}`; }
 async function read(path) {
   const p = key(path);
   try {
@@ -15,7 +15,6 @@ async function read(path) {
 }
 async function write(path, value) {
   const p = key(path);
-  mem.set(p, value);
   await put(p, JSON.stringify(value), {
     access: 'private',
     addRandomSuffix: false,
@@ -23,6 +22,7 @@ async function write(path, value) {
     contentType: 'application/json',
     cacheControlMaxAge: 60,
   });
+  mem.set(p, value);
   return value;
 }
 async function claim(path, value) {
@@ -50,11 +50,12 @@ async function listJson(prefix) {
   do {
     const r = await list({ prefix: key(prefix), limit: 1000, cursor });
     for (const b of (r.blobs || [])) {
-      const x = await read(b.pathname.slice('a2a/v3/'.length));
+      const x = await read(b.pathname.slice('a2a/v4/'.length));
       if (x) out.push(x);
     }
     cursor = r.hasMore ? r.cursor : undefined;
   } while (cursor);
   return out;
 }
+globalThis.saveTask = async (principal, task) => write(`principals/${principal}/tasks/${task.id}`, task);
 module.exports = { read, write, claim, release, listJson };
