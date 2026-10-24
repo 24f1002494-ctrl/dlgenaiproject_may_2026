@@ -1,17 +1,1 @@
-module.exports = function(req,res){
-  const host=(req.headers.host||'invoice-action-agent-24f1002494-7372.vercel.app').split(':')[0];
-  const base='https://'+host+'/a2a/';
-  res.statusCode=200;
-  res.setHeader('Content-Type','application/json; charset=utf-8');
-  res.setHeader('Cache-Control','no-store');
-  res.end(JSON.stringify({
-    name:'Invoice Action Agent',
-    description:'Evidence-based invoice action agent with approval gates, durable task state, idempotency, receipts and user isolation.',
-    version:'1.0.0',
-    capabilities:{streaming:false,pushNotifications:false,stateTransitionHistory:true},
-    defaultInputModes:['application/vnd.ga5.invoice-claim-batch+json'],
-    defaultOutputModes:['application/vnd.ga5.invoice-action-proposals+json','application/vnd.ga5.invoice-action-receipts+json'],
-    supportedInterfaces:[{url:base,protocolBinding:'HTTP+JSON',protocolVersion:'1.0'}],
-    skills:[{id:'invoice_action_agent',name:'Invoice Action Agent',description:'Analyze invoice packages and propose or execute only accepted business actions.',tags:['invoice','payments','approval','reconciliation','duplicate','evidence']}]
-  }));
-};
+module.exports=function(req,res){const host=(req.headers.host||'invoice-action-agent-v2.vercel.app').split(':')[0];const base='https://'+host+'/a2a';res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({name:'Invoice Action Agent',description:'Evidence-based invoice action agent with approval gates, durable task state, idempotency, receipts and user isolation.',version:'1.0.0',capabilities:{streaming:false,pushNotifications:false,stateTransitionHistory:true},defaultInputModes:['application/vnd.ga5.invoice-claim-batch+json'],defaultOutputModes:['application/vnd.ga5.invoice-action-proposals+json','application/vnd.ga5.invoice-action-receipts+json'],supportedInterfaces:[{url:base,protocolBinding:'HTTP+JSON',protocolVersion:'1.0'}],skills:[{id:'invoice_action_agent',name:'Invoice Action Agent',description:'Analyze invoice packages and propose or execute only accepted business actions.',tags:['invoice','payments','approval','reconciliation','duplicate','evidence']}] }))};
