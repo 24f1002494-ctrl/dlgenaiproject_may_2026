@@ -28,7 +28,7 @@ async function write(path, value) {
 async function claim(path, value) {
   const p = key(`locks/${path}`);
   try {
-    await put(p, JSON.stringify(value), {
+    await put(p, JSON.stringify({ ...value, at: Date.now() }), {
       access: 'private',
       addRandomSuffix: false,
       allowOverwrite: false,
@@ -37,16 +37,16 @@ async function claim(path, value) {
     });
     return true;
   } catch (e) {
-    // A crashed serverless invocation can leave the lock behind.  Locks are
-    // advisory; the durable idempotency/task record remains authoritative.
+    // A crashed serverless invocation can leave the lock behind. Locks are
+    // advisory, but an active request must never be stolen while it is running.
     try {
       const r = await get(p, { access: 'private', useCache: false });
       if (r && r.statusCode === 200 && r.stream) {
         const held = JSON.parse(await new Response(r.stream).text());
-        const at = Number(held && held.at) || 0;
-        if (!at || Date.now() - at > 10000) {
+        const at = Number(held && (held.at ?? held.t)) || 0;
+        if (at && Date.now() - at > 60000) {
           await del(p, { access: 'private' });
-          await put(p, JSON.stringify(value), {
+          await put(p, JSON.stringify({ ...value, at: Date.now() }), {
             access: 'private',
             addRandomSuffix: false,
             allowOverwrite: false,
