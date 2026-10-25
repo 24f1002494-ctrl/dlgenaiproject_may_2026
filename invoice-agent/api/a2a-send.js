@@ -76,9 +76,9 @@ module.exports = async function(req, res) {
     }
   }
 
-  // Normalize structured evidence into one determining line. This keeps the
-  // canonical handler deterministic even when evidence is supplied as objects
-  // or separate references rather than inline bracket markers.
+  // Normalize structured evidence into a canonical determining line. The
+  // canonical handler recognizes evidence only when its references are
+  // bracketed, so preserve the exact reference IDs in that format.
   const msg = body?.message;
   const part = Array.isArray(msg?.parts) ? msg.parts.find(x => x?.mediaType === IN && isObj(x.data)) : null;
   if (part && Array.isArray(part.data.packages)) {
@@ -86,11 +86,15 @@ module.exports = async function(req, res) {
       const refs = [];
       collectEvidence(pkg, refs);
       if (refs.length >= 3) {
+        const evidence = refs.slice(0,3).map(r => {
+          const s = String(r).trim();
+          return /^\[[^\]]+\]$/.test(s) ? s : `[${s}]`;
+        });
         const docs = Array.isArray(pkg.documents) ? pkg.documents.slice() : [];
         const marker = {
           ref: 'evidence-determining',
-          text: `Determining evidence ${refs.slice(0,3).join(' ')} supports the invoice decision.`,
-          evidenceRefs: refs.slice(0,3)
+          text: `Determining evidence ${evidence.join(' ')} supports the invoice decision.`,
+          evidenceRefs: evidence
         };
         if (docs.length && isObj(docs[0])) {
           const lines = Array.isArray(docs[0].lines) ? docs[0].lines.slice() : [];
