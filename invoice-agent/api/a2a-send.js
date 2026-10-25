@@ -14,7 +14,7 @@ const principal = req => {
   return m ? hash(m[1]) : null;
 };
 const idemPath = (p, id) => `principals/${p}/idem/${encodeURIComponent(id)}`;
-const evidenceKeys = new Set(['evidence','evidenceRefs','evidenceIds','references','referenceIds','citations','refs','sources']);
+const evidenceKeys = new Set(['evidence','evidenceRefs','evidenceIds','evidenceRef','references','referenceIds','referenceId','citations','citationIds','citationId','refs','sources']);
 const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
 const text = x => typeof x === 'string' ? x : '';
 function collectEvidence(x, out, key = '') {
@@ -23,7 +23,7 @@ function collectEvidence(x, out, key = '') {
     for (const m of x.matchAll(/\[[^\]\r\n]+\]/g)) if (!out.includes(m[0])) out.push(m[0]);
     if (evidenceKeys.has(key)) {
       const s = x.trim();
-      if (s && !out.includes(s) && (/^(?:E|EV|REF|DOC|LINE|R)\w+$/i.test(s) || /^\d+$/.test(s))) out.push(s);
+      if (s && !out.includes(s) && s.length <= 200 && !/[\r\n]/.test(s)) out.push(s);
     }
     return;
   }
@@ -31,16 +31,8 @@ function collectEvidence(x, out, key = '') {
   if (!isObj(x)) return;
   for (const [k,v] of Object.entries(x)) {
     if (evidenceKeys.has(k)) {
-      if (typeof v === 'string') collectEvidence(v, out, k);
-      else if (Array.isArray(v)) for (const item of v) {
-        if (typeof item === 'string') collectEvidence(item, out, k);
-        else if (isObj(item)) {
-          for (const kk of ['ref','id','evidenceId','referenceId','citationId']) if (text(item[kk])) collectEvidence(item[kk], out, k);
-          collectEvidence(item.text || item.content || '', out, k);
-        }
-        if (out.length >= 3) break;
-      }
-    } else if (k === 'ref' || k === 'evidenceId' || k === 'referenceId' || k === 'citationId') {
+      collectEvidence(v, out, k);
+    } else if (['ref','evidenceId','evidence_id','evidenceRef','evidence_ref','referenceId','reference_id','citationId','citation_id'].includes(k)) {
       if (text(v)) collectEvidence(v, out, k);
     }
     if (out.length < 3 && typeof v === 'string') collectEvidence(v, out, k);
@@ -77,8 +69,7 @@ module.exports = async function(req, res) {
   }
 
   // Normalize structured evidence into a canonical determining line. The
-  // canonical handler recognizes evidence only when its references are
-  // bracketed, so preserve the exact reference IDs in that format.
+  // canonical handler recognizes evidence references in bracketed form.
   const msg = body?.message;
   const part = Array.isArray(msg?.parts) ? msg.parts.find(x => x?.mediaType === IN && isObj(x.data)) : null;
   if (part && Array.isArray(part.data.packages)) {
